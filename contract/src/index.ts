@@ -50,8 +50,8 @@ export class Contract extends NearContract {
 		MINT
 	*/
 	@call
-	nft_mint({ token_id, metadata, receiver_id, perpetual_royalties }) {
-		return internalMint({ contract: this, tokenId: token_id, metadata: metadata, receiverId: receiver_id, perpetualRoyalties: perpetual_royalties });
+	nft_mint({ metadata, receiver_id, perpetual_royalties }) {
+		return internalMint({ contract: this, metadata: metadata, receiverId: receiver_id, perpetualRoyalties: perpetual_royalties });
 	}
 
 	/*

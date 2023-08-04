@@ -3,16 +3,15 @@ import { assert, near } from "near-sdk-js";
 import { Contract, NFT_METADATA_SPEC, NFT_STANDARD_NAME } from ".";
 import { internalAddTokenToOwner, refundDeposit } from "./internal";
 import { Token, TokenMetadata } from "./metadata";
+import { internalTotalSupply } from "./enumeration";
 
 export function internalMint({
 	contract,
-	tokenId,
 	metadata,
 	receiverId,
 	perpetualRoyalties
 }: {
 	contract: Contract,
-	tokenId: string,
 	metadata: TokenMetadata,
 	receiverId: string
 	perpetualRoyalties: { [key: string]: number }
@@ -47,7 +46,9 @@ export function internalMint({
 	});
 
 	//insert the token ID and token struct and make sure that the token doesn't exist
-	assert(!contract.tokensById.containsKey(tokenId), "Token already exists");
+	// assert(!contract.tokensById.containsKey(tokenId), "Token already exists");
+	let total = internalTotalSupply();
+	let tokenId = (total + 1).toString();
 	contract.tokensById.set(tokenId, token)
 
 	//insert the token ID and metadata
