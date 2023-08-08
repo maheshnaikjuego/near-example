@@ -47,7 +47,7 @@ export function internalMint({
 
 	//insert the token ID and token struct and make sure that the token doesn't exist
 	// assert(!contract.tokensById.containsKey(tokenId), "Token already exists");
-	let total = internalTotalSupply();
+	let total = internalTotalSupply({ contract: contract });
 	let tokenId = (total + 1).toString();
 	contract.tokensById.set(tokenId, token)
 
