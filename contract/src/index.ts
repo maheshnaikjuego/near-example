@@ -19,6 +19,7 @@ export class Contract extends NearContract {
 	tokensPerOwner: LookupMap;
 	tokensById: LookupMap;
 	tokenMetadataById: UnorderedMap;
+	royaltyAddress: UnorderedMap;
 	metadata: NFTContractMetadata;
 
 	/*
@@ -39,6 +40,7 @@ export class Contract extends NearContract {
 		this.tokensPerOwner = new LookupMap("tokensPerOwner");
 		this.tokensById = new LookupMap("tokensById");
 		this.tokenMetadataById = new UnorderedMap("tokenMetadataById");
+		this.royaltyAddress = new UnorderedMap("royaltyAddress");
 		this.metadata = metadata;
 	}
 
@@ -50,7 +52,8 @@ export class Contract extends NearContract {
 		MINT
 	*/
 	@call
-	nft_mint({ metadata, receiver_id, perpetual_royalties }) {
+	nft_mint({ metadata, receiver_id }) {
+		let perpetual_royalties = this.nft_get_royalty({royalty_address: null});
 		return internalMint({ contract: this, metadata: metadata, receiverId: receiver_id, perpetualRoyalties: perpetual_royalties });
 	}
 
@@ -110,6 +113,30 @@ export class Contract extends NearContract {
 	//transfers the token to the receiver ID and returns the payout object that should be payed given the passed in balance. 
 	nft_transfer_payout({ receiver_id, token_id, approval_id, memo, balance, max_len_payout }) {
 		return internalNftTransferPayout({ contract: this, receiverId: receiver_id, tokenId: token_id, approvalId: approval_id, memo: memo, balance: balance, maxLenPayout: max_len_payout });
+	}
+
+	@view
+	nft_get_royalty({royalty_address}) {
+		if(royalty_address == null){
+			let royalty: any = {}
+			let keys = this.royaltyAddress.toArray();
+			for(let i = 0; i < keys.length; i++){
+				royalty[keys[i][0]] = keys[i][1];
+			}
+			return royalty;
+		} else {
+			return this.royaltyAddress.get(royalty_address);
+		}
+	}
+
+	@call
+	nft_add_royalty({royalty_address, royalty_amount}){
+		this.royaltyAddress.set(royalty_address, royalty_amount);
+	}
+
+	@call
+	nft_remove_royalty({royalty_address}){
+		this.royaltyAddress.remove(royalty_address);
 	}
 
 	@call
