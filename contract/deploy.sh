@@ -10,4 +10,4 @@ fi
 echo ">> Deploying contract"
 
 # https://docs.near.org/tools/near-cli#near-dev-deploy
-near deploy --wasmFile build/nearnfttest.wasm
+near deploy $NFT_DEV_CONTRACT --wasmFile build/nearnfttest.wasm --accountId $NFT_DEV_CONTRACT
