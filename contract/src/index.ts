@@ -1,11 +1,11 @@
-
-import { NearContract, NearBindgen, near, call, view, LookupMap, UnorderedMap, Vector, UnorderedSet } from 'near-sdk-js'
+import { NearContract, NearBindgen, near, call, view, LookupMap, UnorderedMap, Vector, UnorderedSet, LookupSet } from 'near-sdk-js'
 import { NFTContractMetadata, Token, TokenMetadata, internalNftMetadata } from './metadata';
 import { internalMint } from './mint';
 import { internalNftTokens, internalSupplyForOwner, internalTokensForOwner, internalTotalSupply } from './enumeration';
 import { internalNftToken, internalNftTransfer, internalNftTransferCall, internalResolveTransfer } from './nft_core';
 import { internalNftApprove, internalNftIsApproved, internalNftRevoke, internalNftRevokeAll } from './approval';
 import { internalNftPayout, internalNftTransferPayout } from './royalty';
+import { assertOnlyOwner, internalAddApprovedMinter, internalAddApprovedOwner, internalRemoveMinter, internalRemoveOwner, isApprovedMinter, isApprovedOwner } from './access';
 
 /// This spec can be treated like a version of the standard.
 export const NFT_METADATA_SPEC = "nft-1.0.0";
@@ -20,6 +20,8 @@ export class Contract extends NearContract {
 	tokensById: LookupMap;
 	tokenMetadataById: UnorderedMap;
 	royaltyAddress: UnorderedMap;
+	approvedOwners: LookupSet;
+	approvedMinters: LookupSet;
 	metadata: NFTContractMetadata;
 
 	/*
@@ -42,6 +44,11 @@ export class Contract extends NearContract {
 		this.tokenMetadataById = new UnorderedMap("tokenMetadataById");
 		this.royaltyAddress = new UnorderedMap("royaltyAddress");
 		this.metadata = metadata;
+		this.approvedOwners = new LookupSet("approvedOwners");
+		this.approvedMinters = new LookupSet("approvedMinters");
+		this.approvedOwners.set(owner_id);
+		this.approvedMinters.set(owner_id);
+		near.log(`Add owner role to ${owner_id}, ${this.approvedMinters}`)
 	}
 
 	default() {
@@ -53,7 +60,9 @@ export class Contract extends NearContract {
 	*/
 	@call
 	nft_mint({ metadata, receiver_id }) {
-		let perpetual_royalties = this.nft_get_royalty({royalty_address: null});
+		let perpetual_royalties = this.nft_get_royalty({ royalty_address: null });
+		// let caller = near.predecessorAccountId();
+		// assert(this.has_role({role: "OWNER", account_id: caller}), "Only owner can call")
 		return internalMint({ contract: this, metadata: metadata, receiverId: receiver_id, perpetualRoyalties: perpetual_royalties });
 	}
 
@@ -116,11 +125,11 @@ export class Contract extends NearContract {
 	}
 
 	@view
-	nft_get_royalty({royalty_address}) {
-		if(royalty_address == null){
+	nft_get_royalty({ royalty_address }) {
+		if (royalty_address == null) {
 			let royalty: any = {}
 			let keys = this.royaltyAddress.toArray();
-			for(let i = 0; i < keys.length; i++){
+			for (let i = 0; i < keys.length; i++) {
 				royalty[keys[i][0]] = keys[i][1];
 			}
 			return royalty;
@@ -130,12 +139,12 @@ export class Contract extends NearContract {
 	}
 
 	@call
-	nft_add_royalty({royalty_address, royalty_amount}){
+	nft_add_royalty({ royalty_address, royalty_amount }) {
 		this.royaltyAddress.set(royalty_address, royalty_amount);
 	}
 
 	@call
-	nft_remove_royalty({royalty_address}){
+	nft_remove_royalty({ royalty_address }) {
 		this.royaltyAddress.remove(royalty_address);
 	}
 
@@ -185,5 +194,50 @@ export class Contract extends NearContract {
 	//Query for all the tokens for an owner
 	nft_metadata() {
 		return internalNftMetadata({ contract: this });
+	}
+
+	/*
+		ACCESS
+	*/
+
+	@call
+	update_owner({ new_owner }) {
+		assertOnlyOwner({ contract: this });
+		this.owner_id = new_owner;
+		this.add_approved_owner({ account_id: new_owner });
+	}
+
+	@call
+	add_approved_owner({ account_id }) {
+		assertOnlyOwner({ contract: this });
+		return internalAddApprovedOwner({ contract: this, accountId: account_id })
+	}
+
+	@call
+	add_approved_minter({ account_id }) {
+		assertOnlyOwner({ contract: this });
+		return internalAddApprovedMinter({ contract: this, accountId: account_id })
+	}
+
+	@call
+	remove_approved_owner({ account_id }) {
+		assertOnlyOwner({ contract: this });
+		return internalRemoveOwner({ contract: this, accountId: account_id });
+	}
+
+	@call
+	remove_approved_minter({ account_id }) {
+		assertOnlyOwner({ contract: this });
+		return internalRemoveMinter({ contract: this, accountId: account_id });
+	}
+
+	@view
+	is_approved_owner({ account_id }) {
+		return isApprovedOwner({ contract: this, accountId: account_id });
+	}
+
+	@view
+	is_approved_minter({ account_id }) {
+		return isApprovedMinter({ contract: this, accountId: account_id });
 	}
 }
